@@ -1,0 +1,52 @@
+{
+    "name": "PlayerInput",
+    "maps": [
+        {
+            "name": "Drawing",
+            "id": "acef5c32-b1ea-4d7b-937f-9b316b898ea2",
+            "actions": [
+                {
+                    "name": "DrawStart",
+                    "type": "Button",
+                    "id": "a4c4a74c-79d1-49b2-8f87-7fad27a97996",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "Press"
+                },
+                {
+                    "name": "DrawEnd",
+                    "type": "Button",
+                    "id": "6e321f6d-a944-4c83-b570-d1e1b0185993",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "Press(behavior=1)"
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "b6612800-c2b3-4602-b462-a5bd193540ec",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "Press",
+                    "processors": "",
+                    "groups": "",
+                    "action": "DrawStart",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "004ef04f-e71c-4f49-b983-da3f94a9a5d8",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "Press(behavior=1)",
+                    "processors": "",
+                    "groups": "",
+                    "action": "DrawEnd",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}
