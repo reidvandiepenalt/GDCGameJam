@@ -65,8 +65,7 @@ public class Enemy : MonoBehaviour
     public void GetNextAttack()
     {
         curAttack = Attacks.damage;
-        int curDamage = Random.Range(minDamage, maxDamage + 1);
+        curDamage = Random.Range(minDamage, maxDamage + 1);
         attackField.text = "Attacking for: " + curDamage;
-
     }
 }

@@ -17,6 +17,8 @@ public class Manager : MonoBehaviour
     
     public static TurnState turnState = TurnState.draw;
 
+    [SerializeField] GameObject canvas;
+    [SerializeField] GameObject spellFinishText;
     [SerializeField] List<GameObject> enemyPrefabs;
     [SerializeField] Drawing drawManager;
     [SerializeField] GameObject cardDisplay;
@@ -48,13 +50,13 @@ public class Manager : MonoBehaviour
     [SerializeField] int playerMaxHealth = 25;
     int currentBlock = 0;
     int playerMana;
-    [SerializeField] int playerMaxMana = 5;
+    [SerializeField] int playerMaxMana = 3;
     public int PlayerMana { get => playerMana; }
-    List<GameObject> hand = new List<GameObject>();
+    [SerializeField] List<GameObject> hand = new List<GameObject>();
     List<GameObject> handDisplay = new List<GameObject>();
     [SerializeField] List<GameObject> deck = new List<GameObject>();
-    List<GameObject> undrawn = new List<GameObject>();
-    List<GameObject> discard = new List<GameObject>();
+    [SerializeField] List<GameObject> undrawn = new List<GameObject>();
+    [SerializeField]List<GameObject> discard = new List<GameObject>();
 
 
     // Start is called before the first frame update
@@ -83,6 +85,8 @@ public class Manager : MonoBehaviour
                 DrawCards(3);
 
                 turnState = TurnState.pickSpell;
+
+                UIUpdate();
                 break;
             case TurnState.pickSpell:
                 cardDisplay.SetActive(true);
@@ -111,10 +115,16 @@ public class Manager : MonoBehaviour
                 {
                     Destroy(spell.gameObject);
                 }
+                handDisplay.Clear();
+
+                discard.AddRange(hand);
+                hand.Clear();
 
                 currentEnemy.Attack();
 
                 UIUpdate();
+
+                turnState = TurnState.draw;
 
                 break;
         }
@@ -123,6 +133,7 @@ public class Manager : MonoBehaviour
     public void CardPlayed(Spell spell)
     {
         currentSpell = spell;
+        handDisplay.Remove(spell.gameObject);
         Destroy(spell.gameObject);
 
         playerMana -= spell.manaCost;
@@ -151,7 +162,20 @@ public class Manager : MonoBehaviour
 
     public void AdjustHealth(int value)
     {
-        playerHealth += value;
+        if(value < 0 && currentBlock > 0)
+        {
+            currentBlock += value;
+            if(currentBlock < 0)
+            {
+                playerHealth += currentBlock;
+                currentBlock = 0;
+            }
+        }
+        else
+        {
+            playerHealth += value;
+        }
+        UIUpdate();
     }
 
     void UIUpdate()
@@ -171,13 +195,17 @@ public class Manager : MonoBehaviour
 
         //fizzle check
         bool[] hasDrawnOn = new bool[currentPattern.pointCount];
-        foreach (Vector2 point in currentPattern.points)
+        for(int i = 0; i < hasDrawnOn.Length; i++)
+        {
+            hasDrawnOn[i] = false;
+        }
+        for (int j = 0; j < currentPattern.pointCount; j++)
         {
             for(int i = 0; i < drawPoints.Length; i++)
             {
-                if(Vector2.Distance(point, drawPoints[i]) <= fizzleDist)
+                if(Vector2.Distance(currentPattern.points[j], drawPoints[i]) <= fizzleDist)
                 {
-                    hasDrawnOn[i] = true;
+                    hasDrawnOn[j] = true;
                     break;
                 }
             }
@@ -190,7 +218,11 @@ public class Manager : MonoBehaviour
 
         if (fizzled)
         {
-            //add text
+            Debug.Log("fizzled");
+
+            Text ft = Instantiate(spellFinishText, canvas.transform).GetComponent<Text>();
+            ft.text = "Fizzled";
+            Destroy(ft.gameObject, 0.5f);
 
             Destroy(currentPattern.gameObject);
             Destroy(rend.gameObject);
@@ -200,7 +232,7 @@ public class Manager : MonoBehaviour
 
             canDraw = false;
 
-            if (playerMana > 0 && hand.Count > 0)
+            if (playerMana > 0 && handDisplay.Count > 0)
             {
                 turnState = TurnState.pickSpell;
             }
@@ -226,6 +258,27 @@ public class Manager : MonoBehaviour
         currentBlock += Mathf.RoundToInt(currentSpell.baseBlock * (1 + modifier));
         DrawCards(Mathf.RoundToInt(currentSpell.baseDraw * (1 + modifier)));
 
+        Text finishText = Instantiate(spellFinishText, canvas.transform).GetComponent<Text>();
+        if(modifier < -0.3f)
+        {
+            finishText.text = "Bad";
+        }else if (modifier < -0.1f)
+        {
+            finishText.text = "Poor";
+        }else if (modifier < 0.1f)
+        {
+            finishText.text = "OK";
+        }else if (modifier < 0.3f)
+        {
+            finishText.text = "Good";
+        }
+        else
+        {
+            finishText.text = "Great";
+        }
+        Destroy(finishText.gameObject, 0.5f);
+
+        UIUpdate();
 
         Debug.Log("t: " + timer);
         Debug.Log("avg: " + avgDist);
@@ -238,7 +291,7 @@ public class Manager : MonoBehaviour
 
         canDraw = false;
 
-        if(playerMana > 0 && hand.Count > 0)
+        if(playerMana > 0 && handDisplay.Count > 0)
         {
             turnState = TurnState.pickSpell;
         }
