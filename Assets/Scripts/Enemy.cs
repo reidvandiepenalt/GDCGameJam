@@ -20,6 +20,15 @@ public class Enemy : MonoBehaviour
         damage
     }
 
+    public void TakeDamage(int value)
+    {
+        health -= value;
+        if(health <= 0)
+        {
+            //dead
+        }
+    }
+
     public void Attack()
     {
         switch (curAttack)

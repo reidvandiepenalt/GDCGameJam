@@ -158,9 +158,15 @@ public class Manager : MonoBehaviour
             sum += Vector2.Distance(currentPattern.ClosestPoint(drawPoints[i]),
                 drawPoints[i]);
         }
+        float avgDist = sum / drawPoints.Length;
+        float modifier = (Mathf.Clamp((currentSpell.TimeAvg - timer) / currentSpell.TimeDif,
+            -1f, 1f) +
+            Mathf.Clamp((currentSpell.DistAvg - avgDist) / currentSpell.DistDif,
+            -1f, 1f)) / 4;
+        currentEnemy.TakeDamage(Mathf.RoundToInt(currentSpell.baseDamage * (1 + modifier)));
 
         Debug.Log("t: " + timer);
-        Debug.Log("avg: " + (sum / drawPoints.Length));
+        Debug.Log("avg: " + avgDist);
 
         Destroy(currentPattern.gameObject);
         Destroy(rend.gameObject);

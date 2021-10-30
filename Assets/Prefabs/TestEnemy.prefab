@@ -44,7 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a26f85c14b8a20b46923f868b712d19c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  health: 10
+  health: 20
   manager: {fileID: 0}
   sprite: {fileID: 8578524953688177781}
   minDamage: 3
