@@ -22,6 +22,19 @@ public class Manager : MonoBehaviour
     [SerializeField] GameObject cardDisplay;
     [SerializeField] GameObject darkenPanel;
     [SerializeField] Text countdown;
+    [SerializeField] Text manaCounter;
+    [SerializeField] Image manaBar;
+    [SerializeField] Text healthCounter;
+    [SerializeField] Image healthBar;
+    [SerializeField] Text blockCounter;
+
+    [SerializeField] float fizzleDist = 0.8f;
+
+    [SerializeField] Text enemyAttackField;
+    [SerializeField] Text enemyHealthCount;
+    [SerializeField] Image enemyHealthBar;
+    [SerializeField] GameObject enemyStatus;
+
     bool countingDown = false;
 
     public static bool canDraw = false;
@@ -31,9 +44,11 @@ public class Manager : MonoBehaviour
     public Spell currentSpell;
     EdgeCollider2D currentPattern;
 
-    [SerializeField] int playerHealth = 25;
+    int playerHealth;
+    [SerializeField] int playerMaxHealth = 25;
     int currentBlock = 0;
-    [SerializeField] int playerMana = 5;
+    int playerMana;
+    [SerializeField] int playerMaxMana = 5;
     public int PlayerMana { get => playerMana; }
     List<GameObject> hand = new List<GameObject>();
     List<GameObject> handDisplay = new List<GameObject>();
@@ -45,10 +60,16 @@ public class Manager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        playerHealth = playerMaxHealth;
+        playerMana = playerMaxMana;
+
         currentEnemy = Instantiate(enemyPrefabs[0]).GetComponent<Enemy>();
+        currentEnemy.Setup(enemyAttackField, enemyHealthCount, enemyHealthBar, this);
 
         //do this at start of fight
         undrawn.AddRange(deck);
+
+        UIUpdate();
     }
 
     private void FixedUpdate()
@@ -56,24 +77,11 @@ public class Manager : MonoBehaviour
         switch (turnState)
         {
             case TurnState.draw:
-                //get enemies attack, display to player?
                 currentEnemy.GetNextAttack();
+                currentBlock = 0;
 
-                for(int i = 0; i < 3; i++)
-                {
-                    if(undrawn.Count == 0)//discard to undrawn
-                    {
-                        undrawn.AddRange(discard);
-                        discard.Clear();
-                    }
-                    int randIndex = Random.Range(0, undrawn.Count);
-                    hand.Add(undrawn[randIndex]);
-                    GameObject displayCard = Instantiate(undrawn[randIndex], cardDisplay.transform);
-                    handDisplay.Add(displayCard);
-                    displayCard.GetComponent<Spell>().manager = this;
+                DrawCards(3);
 
-                    undrawn.RemoveAt(randIndex);
-                }
                 turnState = TurnState.pickSpell;
                 break;
             case TurnState.pickSpell:
@@ -86,6 +94,9 @@ public class Manager : MonoBehaviour
                 StartCoroutine("Countdown");
                 countingDown = true;
                 turnState++;
+
+                currentEnemy.gameObject.SetActive(false);
+                enemyStatus.SetActive(false);
                 break;
             case TurnState.drawSpell:
                 if(!countingDown)
@@ -103,16 +114,9 @@ public class Manager : MonoBehaviour
 
                 currentEnemy.Attack();
 
-                break;
-        }
-    }
+                UIUpdate();
 
-    void EndTurn()
-    {
-        Spell[] displayedCards = cardDisplay.GetComponentsInChildren<Spell>();
-        foreach (Spell spell in displayedCards)
-        {
-            Destroy(spell.gameObject);
+                break;
         }
     }
 
@@ -121,10 +125,14 @@ public class Manager : MonoBehaviour
         currentSpell = spell;
         Destroy(spell.gameObject);
 
+        playerMana -= spell.manaCost;
+
         //do self damage
         AdjustHealth(-spell.selfDamage);
 
         cardDisplay.SetActive(false);
+
+        UIUpdate();
 
         turnState++;
     }
@@ -146,11 +154,62 @@ public class Manager : MonoBehaviour
         playerHealth += value;
     }
 
+    void UIUpdate()
+    {
+        healthCounter.text = $"{playerHealth} / {playerMaxHealth}";
+        healthBar.fillAmount = (float)playerHealth / playerMaxHealth;
+        manaCounter.text = $"{playerMana} / {playerMaxMana}";
+        manaBar.fillAmount = (float)playerMana / playerMaxMana;
+        blockCounter.text = currentBlock.ToString();
+    }
+
 
     public void DrawEnded(LineRenderer rend, float timer)
     {
         Vector3[] drawPoints = new Vector3[rend.positionCount];
         rend.GetPositions(drawPoints);
+
+        //fizzle check
+        bool[] hasDrawnOn = new bool[currentPattern.pointCount];
+        foreach (Vector2 point in currentPattern.points)
+        {
+            for(int i = 0; i < drawPoints.Length; i++)
+            {
+                if(Vector2.Distance(point, drawPoints[i]) <= fizzleDist)
+                {
+                    hasDrawnOn[i] = true;
+                    break;
+                }
+            }
+        }
+        bool fizzled = false;
+        foreach(bool drawnOn in hasDrawnOn)
+        {
+            if (!drawnOn) { fizzled = true; break; }
+        }
+
+        if (fizzled)
+        {
+            //add text
+
+            Destroy(currentPattern.gameObject);
+            Destroy(rend.gameObject);
+
+            currentEnemy.gameObject.SetActive(true);
+            enemyStatus.SetActive(true);
+
+            canDraw = false;
+
+            if (playerMana > 0 && hand.Count > 0)
+            {
+                turnState = TurnState.pickSpell;
+            }
+            else
+            {
+                turnState = TurnState.enemyAttack;
+            }
+            return;
+        }
 
         float sum = 0;
         for(int i = 0; i < drawPoints.Length; i++)
@@ -164,6 +223,9 @@ public class Manager : MonoBehaviour
             Mathf.Clamp((currentSpell.DistAvg - avgDist) / currentSpell.DistDif,
             -1f, 1f)) / 4;
         currentEnemy.TakeDamage(Mathf.RoundToInt(currentSpell.baseDamage * (1 + modifier)));
+        currentBlock += Mathf.RoundToInt(currentSpell.baseBlock * (1 + modifier));
+        DrawCards(Mathf.RoundToInt(currentSpell.baseDraw * (1 + modifier)));
+
 
         Debug.Log("t: " + timer);
         Debug.Log("avg: " + avgDist);
@@ -171,13 +233,43 @@ public class Manager : MonoBehaviour
         Destroy(currentPattern.gameObject);
         Destroy(rend.gameObject);
 
+        currentEnemy.gameObject.SetActive(true);
+        enemyStatus.SetActive(true);
+
         canDraw = false;
 
-        if(playerMana > 0)
+        if(playerMana > 0 && hand.Count > 0)
         {
             turnState = TurnState.pickSpell;
         }
         else
+        {
+            turnState = TurnState.enemyAttack;
+        }
+    }
+
+    void DrawCards(int amount)
+    {
+        for (int i = 0; i < amount; i++)
+        {
+            if (undrawn.Count == 0)//discard to undrawn
+            {
+                undrawn.AddRange(discard);
+                discard.Clear();
+            }
+            int randIndex = Random.Range(0, undrawn.Count);
+            hand.Add(undrawn[randIndex]);
+            GameObject displayCard = Instantiate(undrawn[randIndex], cardDisplay.transform);
+            handDisplay.Add(displayCard);
+            displayCard.GetComponent<Spell>().manager = this;
+
+            undrawn.RemoveAt(randIndex);
+        }
+    }
+
+    public void EndTurn()
+    {
+        if(turnState == TurnState.pickSpell)
         {
             turnState = TurnState.enemyAttack;
         }

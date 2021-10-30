@@ -26,11 +26,15 @@ public class Drawing : MonoBehaviour
 
     public void OnDrawEnd()
     {
-        drawing = false;
+        if (Manager.canDraw)
+        {
+            drawing = false;
 
-        manager.DrawEnded(lineRend, timer);
-        timer = 0;
-        lineRend = null;
+            manager.DrawEnded(lineRend, timer);
+            timer = 0;
+            lineRend = null;
+        }
+        
     }
 
     private void FixedUpdate()
