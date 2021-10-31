@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 public class Enemy : MonoBehaviour
 {
-    int health;
+    public int health;
     public int maxHealth;
     public Manager manager;
     public Text attackField;
@@ -40,7 +40,9 @@ public class Enemy : MonoBehaviour
         health -= value;
         if(health <= 0)
         {
-            //dead
+            manager.NewEnemy();
+            Destroy(gameObject);
+            return;
         }
 
         HealthUpdate();

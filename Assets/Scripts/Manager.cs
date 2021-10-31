@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class Manager : MonoBehaviour
 {
@@ -17,6 +18,7 @@ public class Manager : MonoBehaviour
     
     public static TurnState turnState = TurnState.draw;
 
+    [SerializeField] GameObject gameOver;
     [SerializeField] GameObject canvas;
     [SerializeField] GameObject spellFinishText;
     [SerializeField] List<GameObject> enemyPrefabs;
@@ -38,6 +40,7 @@ public class Manager : MonoBehaviour
     [SerializeField] GameObject enemyStatus;
 
     bool countingDown = false;
+    bool isDead = false;
 
     public static bool canDraw = false;
 
@@ -62,23 +65,17 @@ public class Manager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        playerHealth = playerMaxHealth;
-        playerMana = playerMaxMana;
-
-        currentEnemy = Instantiate(enemyPrefabs[0]).GetComponent<Enemy>();
-        currentEnemy.Setup(enemyAttackField, enemyHealthCount, enemyHealthBar, this);
-
-        //do this at start of fight
-        undrawn.AddRange(deck);
-
-        UIUpdate();
+        NewEnemy();
     }
 
     private void FixedUpdate()
     {
+        if (isDead) { return; }
+
         switch (turnState)
         {
             case TurnState.draw:
+                playerMana = playerMaxMana;
                 currentEnemy.GetNextAttack();
                 currentBlock = 0;
 
@@ -109,16 +106,7 @@ public class Manager : MonoBehaviour
                 }
                 break;
             case TurnState.enemyAttack:
-                //clear card display (may need to move)
-                Spell[] displayedCards = cardDisplay.GetComponentsInChildren<Spell>();
-                foreach(Spell spell in displayedCards)
-                {
-                    Destroy(spell.gameObject);
-                }
-                handDisplay.Clear();
-
-                discard.AddRange(hand);
-                hand.Clear();
+                CardReset();
 
                 currentEnemy.Attack();
 
@@ -128,6 +116,19 @@ public class Manager : MonoBehaviour
 
                 break;
         }
+    }
+
+    void CardReset()
+    {
+        Spell[] displayedCards = cardDisplay.GetComponentsInChildren<Spell>();
+        foreach (Spell spell in displayedCards)
+        {
+            Destroy(spell.gameObject);
+        }
+        handDisplay.Clear();
+
+        discard.AddRange(hand);
+        hand.Clear();
     }
 
     public void CardPlayed(Spell spell)
@@ -146,6 +147,22 @@ public class Manager : MonoBehaviour
         UIUpdate();
 
         turnState++;
+    }
+
+    public void NewEnemy()
+    {
+        CardReset();
+        turnState = TurnState.draw;
+
+        playerHealth = playerMaxHealth;
+        playerMana = playerMaxMana;
+
+        currentEnemy = Instantiate(enemyPrefabs[0]).GetComponent<Enemy>();
+        currentEnemy.Setup(enemyAttackField, enemyHealthCount, enemyHealthBar, this);
+
+        undrawn.AddRange(deck);
+
+        UIUpdate();
     }
 
     IEnumerator Countdown()
@@ -176,6 +193,16 @@ public class Manager : MonoBehaviour
             playerHealth += value;
         }
         UIUpdate();
+        if(playerHealth < 0)
+        {
+            gameOver.SetActive(true);
+            isDead = true;
+        }
+    }
+
+    public void Reload()
+    {
+        SceneManager.LoadScene("SampleScene");
     }
 
     void UIUpdate()
@@ -218,8 +245,6 @@ public class Manager : MonoBehaviour
 
         if (fizzled)
         {
-            Debug.Log("fizzled");
-
             Text ft = Instantiate(spellFinishText, canvas.transform).GetComponent<Text>();
             ft.text = "Fizzled";
             Destroy(ft.gameObject, 0.5f);
